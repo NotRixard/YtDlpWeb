@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <title>yt-dlp command builder</title>
+
+  <style>
+    :root {
+      --bg: #000;
+      --ink: #fff;
+      --mute: #8c8c8c;
+      --line: #595959;
+      --act: #fff;
+
+      color-scheme: dark;
+      box-sizing: border-box;
+      padding-top: env(safe-area-inset-top, 0px);
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    * {
+      box-sizing: border-box;
+      border-radius: 0;
+      box-shadow: none;
+      transition: none;
+      animation: none;
+    }
+
+    html {
+      scroll-padding-top: env(safe-area-inset-top, 0px);
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font: 15px/1.5 ui-monospace, "JetBrains Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+    }
+
+    main {
+      max-width: 680px;
+      margin: 0 auto;
+      padding: 24px 16px 48px;
+    }
+
+    h1 {
+      font-size: 1rem;
+      font-weight: 400;
+      margin: 0 0 4px;
+    }
+
+    p.sub {
+      margin: 0 0 20px;
+      color: var(--mute);
+    }
+
+    ::selection {
+      background: #fff;
+      color: #000;
+    }
+
+    .out {
+      position: sticky;
+      top: env(safe-area-inset-top, 0px);
+      z-index: 5;
+      background: var(--bg);
+      border: 1px solid var(--act);
+      padding: 12px;
+      margin: 0 0 20px;
+    }
+
+    .out code {
+      display: block;
+      font: inherit;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    .out button {
+      margin-top: 12px;
+    }
+
+    fieldset {
+      position: relative;
+      background: var(--bg);
+      border: 1px solid var(--line);
+      margin: 0 0 -1px;
+      padding: 12px 16px 14px;
+      min-width: 0;
+    }
+
+    fieldset:hover,
+    fieldset:focus-within {
+      border-color: var(--act);
+      z-index: 2;
+    }
+
+    legend {
+      padding: 0 6px;
+      color: var(--mute);
+    }
+
+    fieldset:hover legend,
+    fieldset:focus-within legend {
+      color: var(--ink);
+    }
+
+    label {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      padding: 5px 0;
+      cursor: pointer;
+    }
+
+    label small {
+      display: block;
+      color: var(--mute);
+    }
+
+    input[type=checkbox],
+    input[type=radio] {
+      accent-color: #fff;
+      margin: 4px 0 0;
+    }
+
+    input[type=text],
+    select {
+      width: 100%;
+      font: inherit;
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      background: var(--bg);
+      color: var(--ink);
+    }
+
+    input[type=text]:focus,
+    select:focus {
+      border-color: var(--act);
+      outline: 0;
+    }
+
+    select:disabled {
+      opacity: .45;
+      cursor: not-allowed;
+    }
+
+    .row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .row > div {
+      flex: 1 1 180px;
+    }
+
+    .row span {
+      display: block;
+      font-size: .85rem;
+      color: var(--mute);
+      margin-bottom: 4px;
+    }
+
+    .row > div:has(select:disabled) span {
+      opacity: .45;
+    }
+
+    button {
+      font: inherit;
+      padding: 7px 16px;
+      border: 1px solid var(--act);
+      background: var(--bg);
+      color: var(--ink);
+      cursor: pointer;
+    }
+
+    button:hover,
+    button:focus-visible {
+      background: var(--act);
+      color: #000;
+    }
+
+    :focus-visible {
+      outline: 1px solid var(--act);
+      outline-offset: 2px;
+    }
+
+    .tip {
+      font-size: .9rem;
+      color: var(--mute);
+      margin: 14px 0 0;
+    }
+
+    .tip a {
+      color: var(--ink);
+    }
+
+    .hide {
+      display: none;
+    }
+  </style>
+</head>
+
+<body>
+  <main>
+    <h1>yt-dlp command builder</h1>
+    <p class="sub">Pick options, copy the command, paste it into your terminal.</p>
+
+    <div class="out">
+      <code id="cmd" aria-live="polite"></code>
+      <button id="copy" type="button">Copy command</button>
+    </div>
+
+    <fieldset>
+      <legend>-- link</legend>
+      <input type="text" id="url" placeholder="Paste a video or playlist link" autocomplete="off">
+    </fieldset>
+
+    <fieldset>
+      <legend>-- mode</legend>
+      <label>
+        <input type="radio" name="mode" value="video" checked>
+        <span>Video</span>
+      </label>
+      <label>
+        <input type="radio" name="mode" value="audio">
+        <span>Audio only</span>
+      </label>
+    </fieldset>
+
+    <fieldset id="audioBox">
+      <legend>-- audio</legend>
+      <div class="row">
+        <div>
+          <span>Format</span>
+          <select id="afmt">
+            <option value="mp3">MP3</option>
+            <option value="m4a">M4A</option>
+            <option value="opus">Opus</option>
+            <option value="vorbis">OGG (Vorbis)</option>
+            <option value="flac">FLAC</option>
+            <option value="wav">WAV</option>
+            <option value="aac">AAC</option>
+            <option value="alac">ALAC</option>
+            <option value="best">Original (no conversion)</option>
+          </select>
+        </div>
+        <div>
+          <span>Quality</span>
+          <select id="aq">
+            <option value="0">Best</option>
+            <option value="5">Medium</option>
+            <option value="9">Small file</option>
+            <option value="na" id="naOpt" hidden disabled>Not applicable</option>
+          </select>
+        </div>
+      </div>
+    </fieldset>
+
+    <fieldset id="videoBox" class="hide">
+      <legend>-- video</legend>
+      <div class="row">
+        <div>
+          <span>Max resolution</span>
+          <select id="vh">
+            <option value="">Original (best available)</option>
+            <option value="4320">8K (4320p)</option>
+            <option value="2160">4K (2160p)</option>
+            <option value="1440">1440p</option>
+            <option value="1080">1080p</option>
+            <option value="720" selected>720p</option>
+            <option value="480">480p</option>
+            <option value="360">360p</option>
+            <option value="240">240p</option>
+            <option value="144">144p</option>
+          </select>
+        </div>
+        <div>
+          <span>Codec</span>
+          <select id="vc">
+            <option value="h264" selected>H.264 (lightest, max 1080p)</option>
+            <option value="vp9">VP9 (medium, up to 8K)</option>
+            <option value="av01">AV1 (smallest, heaviest)</option>
+            <option value="">Best available</option>
+          </select>
+        </div>
+      </div>
+      <label>
+        <input type="checkbox" id="hdr">
+        <span>
+          HDR
+          <small>Only if the video has an HDR version, otherwise you get normal video</small>
+        </span>
+      </label>
+      <p class="tip hide" id="hdrTip">
+        YouTube only offers HDR as VP9 or AV1, so the codec choice is ignored.
+        Playback is heavier, and you need an HDR capable screen and player (mpv or VLC),
+        or it looks washed out.
+      </p>
+    </fieldset>
+
+    <fieldset>
+      <legend>-- extras</legend>
+      <label>
+        <input type="checkbox" id="embed" checked>
+        <span>
+          Embed thumbnail and metadata
+          <small>Cover art plus title and uploader inside the file</small>
+        </span>
+      </label>
+      <label>
+        <input type="checkbox" id="byname">
+        <span>
+          Add uploader to filename
+          <small>Looks like "Title by Uploader"</small>
+        </span>
+      </label>
+      <label>
+        <input type="checkbox" id="pl">
+        <span>
+          It is a playlist
+          <small>Downloads everything into its own folder, numbered in order</small>
+        </span>
+      </label>
+      <label id="arcRow" class="hide">
+        <input type="checkbox" id="arc" checked>
+        <span>
+          Skip already downloaded items
+          <small>Remembers what it grabbed in archive.txt, so you can re-run safely</small>
+        </span>
+      </label>
+    </fieldset>
+
+    <p class="tip">
+      You need ffmpeg installed for conversion, merging and embedding.
+      Audio quality only applies to lossy formats.
+    </p>
+    <p class="tip">
+      Need to install them? Here is the
+      <a href="https://github.com/yt-dlp/yt-dlp/wiki/Installation" target="_blank" rel="noopener">yt-dlp installation guide</a>
+      and the
+      <a href="https://ffmpeg.org/download.html" target="_blank" rel="noopener">ffmpeg download page</a>.
+    </p>
+  </main>
+
+  <script>
+    const $ = id => document.getElementById(id);
+    const mode = () => document.querySelector('input[name=mode]:checked').value;
+
+    // Remembers the audio quality while a lossless format disables the picker
+    let lastQuality = '0';
+
+    // Wrap a value in single quotes so the shell treats it literally
+    function shellQuote(s) {
+      return "'" + s.replace(/'/g, "'\\''") + "'";
+    }
+
+    function buildAudioArgs(args) {
+      const format = $('afmt').value;
+      const lossless = ['flac', 'wav', 'alac'].includes(format);
+      const qualityOff = lossless || format === 'best';
+      const quality = $('aq');
+
+      args.push('-x');
+
+      // Switch the quality picker to "not applicable" when it has no effect
+      if (qualityOff) {
+        if (quality.value !== 'na') lastQuality = quality.value;
+        quality.value = 'na';
+        $('naOpt').textContent = lossless ? 'Lossless' : 'Unchanged';
+      } else if (quality.value === 'na') {
+        quality.value = lastQuality;
+      }
+      quality.disabled = qualityOff;
+
+      if (format !== 'best') {
+        args.push('--audio-format ' + format);
+        if (!lossless) args.push('--audio-quality ' + quality.value);
+      }
+    }
+
+    function buildVideoArgs(args) {
+      const hdr = $('hdr').checked;
+      let codec = $('vc').value;
+
+      // H.264 on YouTube tops out at 1080p, so hide larger sizes
+      const capped = codec === 'h264' && !hdr;
+      [...$('vh').options].forEach(option => {
+        const tooBig = option.value === '' || +option.value > 1080;
+        option.hidden = capped && tooBig;
+        option.disabled = capped && tooBig;
+      });
+      if (capped && ($('vh').value === '' || +$('vh').value > 1080)) {
+        $('vh').value = '1080';
+      }
+
+      // HDR is only offered as VP9 or AV1, so the codec choice is ignored
+      $('vc').disabled = hdr;
+      $('hdrTip').classList.toggle('hide', !hdr);
+      if (hdr) codec = '';
+
+      const height = $('vh').value;
+      const res = height ? 'res:' + height : 'res';
+
+      let sort;
+      if (codec === 'h264') sort = 'vcodec:h264,' + res;
+      else if (codec) sort = res + ',vcodec:' + codec;
+      else sort = res;
+
+      if (hdr) args.push('-f ' + shellQuote('bv*[dynamic_range!=SDR]+ba/bv*+ba'));
+      args.push('-S ' + shellQuote(sort));
+      args.push('--merge-output-format ' + (codec === 'h264' ? 'mp4' : 'mkv'));
+    }
+
+    function build() {
+      const isAudio = mode() === 'audio';
+      const isPlaylist = $('pl').checked;
+      const args = [];
+
+      // Show only the settings that apply to the chosen mode
+      $('audioBox').classList.toggle('hide', !isAudio);
+      $('videoBox').classList.toggle('hide', isAudio);
+      $('arcRow').classList.toggle('hide', !isPlaylist);
+
+      if (isAudio) buildAudioArgs(args);
+      else buildVideoArgs(args);
+
+      if ($('embed').checked) {
+        args.push('--embed-thumbnail', '--embed-metadata');
+      }
+
+      // Output filename template
+      const name = '%(title)s' + ($('byname').checked ? ' by %(uploader)s' : '');
+
+      if (isPlaylist) {
+        const template = '%(playlist_title)s/%(playlist_index)02d ' + name + '.%(ext)s';
+        args.push('--yes-playlist', '-o ' + shellQuote(template));
+        if ($('arc').checked) args.push('--download-archive archive.txt');
+      } else {
+        args.push('--no-playlist', '-o ' + shellQuote(name + '.%(ext)s'));
+      }
+
+      const url = $('url').value.trim();
+      args.push(url ? shellQuote(url) : "'PASTE_LINK_HERE'");
+
+      $('cmd').textContent = 'yt-dlp ' + args.join(' ');
+    }
+
+    document.querySelectorAll('input, select').forEach(el => {
+      el.addEventListener('input', build);
+    });
+
+    $('copy').onclick = async () => {
+      try {
+        await navigator.clipboard.writeText($('cmd').textContent);
+        $('copy').textContent = 'Copied';
+      } catch (e) {
+        $('copy').textContent = 'Select and copy manually';
+      }
+      setTimeout(() => { $('copy').textContent = 'Copy command'; }, 1500);
+    };
+
+    build();
+  </script>
+</body>
+</html>
